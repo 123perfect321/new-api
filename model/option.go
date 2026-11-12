@@ -78,9 +78,7 @@ func InitOptionMap() {
 	common.OptionMap["SMTPInsecureSkipVerify"] = strconv.FormatBool(common.SMTPInsecureSkipVerify)
 	common.OptionMap["SMTPForceAuthLogin"] = strconv.FormatBool(common.SMTPForceAuthLogin)
 	common.OptionMap["Notice"] = ""
-	common.OptionMap["About"] = `# 关于我们
-
-深圳市掌锐电子有限公司成立于 2014 年，专注于汽车智能硬件整体解决方案的研发、销售，属国家高新技术企业，是长安、五菱、上汽、东风和哪吒等主流车厂在智能座舱技术平台的重要合作伙伴。
+	common.OptionMap["About"] = `深圳市掌锐电子有限公司成立于 2014 年，专注于汽车智能硬件整体解决方案的研发、销售，属国家高新技术企业，是长安、五菱、上汽、东风和哪吒等主流车厂在智能座舱技术平台的重要合作伙伴。
 
 公司团队有丰富汽车电子和 4G/5G 等无线通讯经验，基于 MTK 平台开发的 4G/5G 智能座舱、网约车智能监控等软硬件一体化的解决方案，总出货量超 500 万套，已成功进入中国汽车智能座舱方案公司第一梯队，赢得主流汽车品牌的青睐。
 

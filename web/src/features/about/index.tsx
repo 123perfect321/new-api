@@ -33,7 +33,7 @@ function OpenSourceNotice() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <div className='text-muted-foreground mt-10 space-y-1.5 text-center text-xs'>
+    <div className='text-muted-foreground space-y-1.5 text-center text-xs'>
       <p>
         {t('New API Project Repository:')}{' '}
         <a
@@ -98,6 +98,17 @@ function OpenSourceNotice() {
   )
 }
 
+function Highlight(props: { value: string; label: string }) {
+  return (
+    <div className='bg-muted/40 rounded-2xl px-4 py-6 text-center'>
+      <div className='text-primary text-2xl font-bold tracking-tight sm:text-3xl'>
+        {props.value}
+      </div>
+      <div className='text-muted-foreground mt-1.5 text-sm'>{props.label}</div>
+    </div>
+  )
+}
+
 function EmptyAboutState() {
   const { t } = useTranslation()
 
@@ -149,7 +160,7 @@ export function About() {
     return (
       <PublicLayout>
         <EmptyAboutState />
-        <div className='pb-8'>
+        <div className='mx-auto max-w-3xl pb-8'>
           <OpenSourceNotice />
         </div>
       </PublicLayout>
@@ -178,7 +189,7 @@ export function About() {
           content={rawContent}
           className='prose-neutral dark:prose-invert max-w-none'
         />
-        <div className='pb-8'>
+        <div className='mx-auto max-w-3xl border-t px-4 py-8'>
           <OpenSourceNotice />
         </div>
       </PublicLayout>
@@ -187,13 +198,32 @@ export function About() {
 
   return (
     <PublicLayout>
-      <div className='mx-auto max-w-6xl px-4 py-8'>
-        <RichContent
-          mode='markdown'
-          content={rawContent}
-          className='prose-neutral dark:prose-invert max-w-none'
-        />
-        <OpenSourceNotice />
+      <div className='mx-auto max-w-5xl py-12 sm:py-16'>
+        <section className='text-center'>
+          <h1 className='text-3xl font-bold tracking-tight sm:text-4xl'>
+            关于我们
+          </h1>
+          <p className='text-muted-foreground mt-3 text-lg'>让汽车更智能</p>
+        </section>
+
+        <section className='mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4'>
+          <Highlight value='2014' label='公司成立' />
+          <Highlight value='500 万+' label='累计出货' />
+          <Highlight value='国家级' label='高新技术企业' />
+          <Highlight value='第一梯队' label='智能座舱方案' />
+        </section>
+
+        <section className='mt-14'>
+          <RichContent
+            mode='markdown'
+            content={rawContent}
+            className='prose-neutral dark:prose-invert'
+          />
+        </section>
+
+        <section className='mt-16 border-t pt-8'>
+          <OpenSourceNotice />
+        </section>
       </div>
     </PublicLayout>
   )
