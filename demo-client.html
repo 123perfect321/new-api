@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>网关测试客户端</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel-2: #1e2230;
+    --border: #2a2f3e;
+    --text: #e6e8ef;
+    --text-dim: #9aa1b5;
+    --accent: #4f7cff;
+    --accent-hover: #6a90ff;
+    --danger: #ff6b6b;
+    --ok: #35c98a;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 14px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .config-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .config-row input {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .config-row input:focus { border-color: var(--accent); }
+  .config-row input#baseUrl { flex: 1 1 320px; min-width: 220px; }
+  .config-row input#apiKey { flex: 1 1 320px; min-width: 220px; }
+  .config-row input::placeholder { color: #5a6172; }
+
+  button {
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .15s, opacity .15s;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  button:hover { background: var(--accent-hover); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+  button.ghost:hover { background: #262b3b; }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .toolbar label { font-size: 12px; color: var(--text-dim); }
+  .toolbar select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    outline: none;
+    min-width: 240px;
+    max-width: 420px;
+  }
+  .toolbar .status {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); }
+  .dot.ok { background: var(--ok); }
+  .dot.err { background: var(--danger); }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .msg { display: flex; flex-direction: column; max-width: 82%; }
+  .msg.user { align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+  .msg .role { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+  .msg.user .role { text-align: right; }
+  .bubble {
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg.user .bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.assistant .bubble { background: var(--panel-2); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .reasoning {
+    margin-bottom: 6px;
+    padding: 8px 12px;
+    border-left: 3px solid #8b93a8;
+    background: rgba(139,147,168,.08);
+    border-radius: 6px;
+    color: var(--text-dim);
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.5;
+  }
+  .reasoning::before {
+    content: "思考过程";
+    display: block;
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 4px;
+  }
+  .error-text { color: var(--danger); }
+
+  #composer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  #composer textarea {
+    flex: 1;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    min-height: 44px;
+    max-height: 180px;
+    line-height: 1.5;
+  }
+  #composer textarea:focus { border-color: var(--accent); }
+  #send { height: 44px; padding: 0 20px; }
+
+  .empty-tip {
+    margin: auto;
+    color: var(--text-dim);
+    font-size: 14px;
+    text-align: center;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>网关测试客户端</h1>
+    <div class="config-row">
+      <input id="baseUrl" type="text" placeholder="接口地址，例如 http://127.0.0.1:3000" />
+      <input id="apiKey" type="password" placeholder="API Key，例如 sk-xxxx" />
+      <button id="fetchModels">获取模型</button>
+      <button id="reset" class="ghost">重置</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <label for="modelSelect">模型</label>
+    <select id="modelSelect" disabled>
+      <option value="">（先获取模型）</option>
+    </select>
+    <div class="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">未连接</span>
+    </div>
+  </div>
+
+  <main>
+    <div id="chat">
+      <div class="empty-tip" id="emptyTip">
+        填写上方接口地址和 API Key<br />点击「获取模型」拉取可用模型，然后开始对话
+      </div>
+    </div>
+    <div id="composer">
+      <textarea id="input" rows="1" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
+      <button id="send" disabled>发送</button>
+    </div>
+  </main>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  const baseUrlEl = $('baseUrl');
+  const apiKeyEl = $('apiKey');
+  const fetchBtn = $('fetchModels');
+  const resetBtn = $('reset');
+  const modelSelect = $('modelSelect');
+  const statusDot = $('statusDot');
+  const statusText = $('statusText');
+  const chatEl = $('chat');
+  const emptyTip = $('emptyTip');
+  const inputEl = $('input');
+  const sendBtn = $('send');
+
+  const state = {
+    baseUrl: '',
+    apiKey: '',
+    models: [],
+    streaming: false,
+  };
+
+  // 从 localStorage 恢复上次配置
+  try {
+    baseUrlEl.value = localStorage.getItem('demo.baseUrl') || 'http://127.0.0.1:3000';
+    apiKeyEl.value = localStorage.getItem('demo.apiKey') || '';
+  } catch (_) {}
+
+  function persist() {
+    try {
+      localStorage.setItem('demo.baseUrl', baseUrlEl.value.trim());
+      localStorage.setItem('demo.apiKey', apiKeyEl.value.trim());
+    } catch (_) {}
+  }
+
+  // 规范化接口地址：去掉尾部斜杠，统一拼上 /v1
+  function normalizeBase(url) {
+    let u = (url || '').trim().replace(/\/+$/, '');
+    if (!u) return '';
+    if (u.endsWith('/v1')) return u;
+    return u + '/v1';
+  }
+
+  function setStatus(text, kind) {
+    statusText.textContent = text;
+    statusDot.className = 'dot' + (kind ? ' ' + kind : '');
+  }
+
+  function authHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    const key = apiKeyEl.value.trim();
+    if (key) headers['Authorization'] = 'Bearer ' + key;
+    return headers;
+  }
+
+  function appendMessage(role, text) {
+    if (emptyTip) emptyTip.remove();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg ' + role;
+    const roleLabel = document.createElement('div');
+    roleLabel.className = 'role';
+    roleLabel.textContent = role === 'user' ? '我' : '助手';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    wrap.appendChild(roleLabel);
+    wrap.appendChild(bubble);
+    chatEl.appendChild(wrap);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    return bubble;
+  }
+
+  function appendError(text) {
+    if (emptyTip) emptyTip.remove();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg assistant';
+    const roleLabel = document.createElement('div');
+    roleLabel.className = 'role';
+    roleLabel.textContent = '错误';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble error-text';
+    bubble.textContent = text;
+    wrap.appendChild(roleLabel);
+    wrap.appendChild(bubble);
+    chatEl.appendChild(wrap);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  // 获取模型列表：GET {base}/models
+  async function fetchModels() {
+    const base = normalizeBase(baseUrlEl.value);
+    if (!base) { setStatus('请先填写接口地址', 'err'); return; }
+    if (!apiKeyEl.value.trim()) { setStatus('请先填写 API Key', 'err'); return; }
+
+    fetchBtn.disabled = true;
+    setStatus('获取模型中…');
+    try {
+      const resp = await fetch(base + '/models', { headers: authHeaders() });
+      if (!resp.ok) {
+        throw new Error('HTTP ' + resp.status + ' ' + (await safeText(resp)));
+      }
+      const json = await resp.json();
+      const models = (json.data || []).map((m) => m.id).filter(Boolean);
+      if (models.length === 0) {
+        throw new Error('返回的模型列表为空');
+      }
+      state.models = models;
+      modelSelect.innerHTML = models.map((m) => `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`).join('');
+      modelSelect.disabled = false;
+      sendBtn.disabled = false;
+      persist();
+      setStatus('已获取 ' + models.length + ' 个模型', 'ok');
+    } catch (e) {
+      setStatus('获取模型失败', 'err');
+      appendError('获取模型失败：' + e.message);
+    } finally {
+      fetchBtn.disabled = false;
+    }
+  }
+
+  async function safeText(resp) {
+    try { return (await resp.text()).slice(0, 200); } catch (_) { return ''; }
+  }
+
+  // 流式对话：POST {base}/chat/completions，stream=true
+  async function sendMessage() {
+    const content = inputEl.value.trim();
+    const model = modelSelect.value;
+    if (!content || !model || state.streaming) return;
+
+    const base = normalizeBase(baseUrlEl.value);
+    if (!base) { setStatus('接口地址无效', 'err'); return; }
+
+    inputEl.value = '';
+    autoResize();
+    appendMessage('user', content);
+    sendBtn.disabled = true;
+    state.streaming = true;
+    setStatus('生成中…');
+
+    const msgWrap = document.createElement('div');
+    msgWrap.className = 'msg assistant';
+    const roleLabel = document.createElement('div');
+    roleLabel.className = 'role';
+    roleLabel.textContent = '助手';
+    const reasoningEl = document.createElement('div');
+    reasoningEl.className = 'reasoning';
+    reasoningEl.style.display = 'none';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = '';
+    msgWrap.appendChild(roleLabel);
+    msgWrap.appendChild(reasoningEl);
+    msgWrap.appendChild(bubble);
+    if (emptyTip) emptyTip.remove();
+    chatEl.appendChild(msgWrap);
+    chatEl.scrollTop = chatEl.scrollHeight;
+
+    try {
+      const resp = await fetch(base + '/chat/completions', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content }],
+          stream: true,
+        }),
+      });
+
+      if (!resp.ok) {
+        throw new Error('HTTP ' + resp.status + ' ' + (await safeText(resp)));
+      }
+      if (!resp.body) throw new Error('浏览器不支持流式读取');
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE 按行解析；未完成的行留在 buffer 里等下一个 chunk
+        let idx;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 1);
+          if (!line.startsWith('data:')) continue;
+          const data = line.slice(5).trim();
+          if (data === '[DONE]') { reader.cancel(); break; }
+          try {
+            const delta = JSON.parse(data).choices?.[0]?.delta;
+            if (!delta) continue;
+            if (delta.reasoning_content) {
+              reasoningEl.style.display = '';
+              reasoningEl.textContent += delta.reasoning_content;
+            }
+            if (delta.content) {
+              bubble.textContent += delta.content;
+            }
+            chatEl.scrollTop = chatEl.scrollHeight;
+          } catch (_) { /* 忽略无法解析的行 */ }
+        }
+      }
+
+      if (!bubble.textContent && reasoningEl.style.display === 'none') {
+        bubble.textContent = '（无内容返回）';
+      }
+      setStatus('完成', 'ok');
+    } catch (e) {
+      bubble.textContent = '调用失败：' + e.message;
+      bubble.classList.add('error-text');
+      setStatus('调用失败', 'err');
+    } finally {
+      state.streaming = false;
+      sendBtn.disabled = modelSelect.value === '';
+      inputEl.focus();
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+
+  function autoResize() {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + 'px';
+  }
+
+  fetchBtn.addEventListener('click', fetchModels);
+  sendBtn.addEventListener('click', sendMessage);
+  resetBtn.addEventListener('click', () => {
+    state.models = [];
+    modelSelect.innerHTML = '<option value="">（先获取模型）</option>';
+    modelSelect.disabled = true;
+    sendBtn.disabled = true;
+    setStatus('未连接');
+    try { localStorage.removeItem('demo.baseUrl'); localStorage.removeItem('demo.apiKey'); } catch (_) {}
+  });
+
+  inputEl.addEventListener('input', autoResize);
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // 地址/key 变化时记忆
+  baseUrlEl.addEventListener('change', persist);
+  apiKeyEl.addEventListener('change', persist);
+})();
+</script>
+</body>
+</html>

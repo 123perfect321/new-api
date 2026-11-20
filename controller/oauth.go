@@ -38,6 +38,46 @@ type oauthFlowPayload struct {
 }
 
 // providerParams returns the params of messages that name the OAuth provider.
+const oauthDepartmentInitialQuota = 400000000
+
+func oauthDepartmentGroup(oauthUser *oauth.OAuthUser) string {
+	name, _ := oauthUser.Extra["org_name"].(string)
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	name = strings.ReplaceAll(name, ",", "-")
+	name = strings.Join(strings.Fields(name), " ")
+	runes := []rune(name)
+	if len(runes) > 64 {
+		name = string(runes[:64])
+	}
+	return name
+}
+
+func applyOAuthDepartment(user *model.User, oauthUser *oauth.OAuthUser, newUser bool) error {
+	groupName := oauthDepartmentGroup(oauthUser)
+	if groupName == "" {
+		return nil
+	}
+	if err := model.EnsureOAuthGroup(groupName); err != nil {
+		return err
+	}
+	if user.Group != groupName {
+		user.Group = groupName
+		if !newUser {
+			if err := user.Update(false); err != nil {
+				return err
+			}
+		}
+	}
+	if newUser {
+		quota := oauthDepartmentInitialQuota
+		user.InitialQuota = &quota
+	}
+	return nil
+}
+
 func providerParams(name string) map[string]any {
 	return map[string]any{"provider": name}
 }
@@ -416,6 +456,9 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 		if user.Id == 0 {
 			return nil, nil, &OAuthUserDeletedError{}
 		}
+		if err := applyOAuthDepartment(user, oauthUser, false); err != nil {
+			return nil, nil, err
+		}
 		return user, nil, nil
 	}
 
@@ -510,6 +553,10 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 	}
 	user.Role = common.RoleCommonUser
 	user.Status = common.UserStatusEnabled
+	user.Group = "default"
+	if err := applyOAuthDepartment(user, oauthUser, true); err != nil {
+		return nil, nil, err
+	}
 
 	// Handle affiliate code
 	inviterId := 0
