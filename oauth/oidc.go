@@ -157,7 +157,7 @@ func (p *OIDCProvider) GetUserInfo(ctx context.Context, token *OAuthToken) (*OAu
 	logger.LogDebug(ctx, "[OAuth-OIDC] GetUserInfo success: sub=%s, username=%s, name=%s, email=%s", oidcUser.OpenID, oidcUser.PreferredUsername, oidcUser.Name, oidcUser.Email)
 
 	orgID := firstNonEmptyOIDC(oidcUser.OrgID, oidcUser.OrganizationID, oidcUser.DepartmentID)
-	orgName := firstNonEmptyOIDC(oidcUser.OrgName, oidcUser.OrganizationName, oidcUser.DepartmentName, oidcUser.Department)
+	orgName := firstNonEmptyOIDC(oidcUser.OrgName, oidcUser.OrganizationName, oidcUser.DepartmentName)
 
 	return &OAuthUser{
 		ProviderUserID: oidcUser.OpenID,

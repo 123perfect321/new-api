@@ -19,10 +19,9 @@ New API reads the department in this order:
 1. `org_name`
 2. `organization_name`
 3. `department_name`
-4. `department`
-5. `org_id`
-6. `organization_id`
-7. `department_id`
+4. `org_id`
+5. `organization_id`
+6. `department_id`
 
 The first non-empty value is used as the group name. If the identity provider only returns an organization ID, that ID is used as the group key.
 
