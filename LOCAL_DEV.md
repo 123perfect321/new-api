@@ -334,3 +334,16 @@ Well Known URL
 ```
 
 真实企业 SSO 的 Client Secret 不要写入 Markdown、Git 或聊天记录，放在服务器环境变量或密钥系统中。
+
+## OIDC 部门分组与额度策略
+
+部门名称不写死在代码中。New API 会优先读取 OIDC 的 `org_name`，并兼容 `organization_name`、`department_name`、`org_id` 等常见字段。
+
+部门初始额度可通过以下环境变量配置：
+
+```text
+OIDC_DEFAULT_INITIAL_QUOTA_CREDITS=800
+OIDC_DEPARTMENT_QUOTAS_JSON={"org-id-1":800,"org-id-2":1200}
+```
+
+详细说明见 [docs/oauth-department-policy.md](docs/oauth-department-policy.md)。

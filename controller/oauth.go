@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -37,11 +38,22 @@ type oauthFlowPayload struct {
 	Authorization   *model.AuthFlowAuthorization   `json:"authorization,omitempty"`
 }
 
-// providerParams returns the params of messages that name the OAuth provider.
-const oauthDepartmentInitialQuota = 400000000
+const (
+	oauthDefaultInitialQuotaCredits = 800.0
+	oauthDepartmentQuotasEnv        = "OIDC_DEPARTMENT_QUOTAS_JSON"
+	oauthDefaultQuotaCreditsEnv     = "OIDC_DEFAULT_INITIAL_QUOTA_CREDITS"
+)
 
-func oauthDepartmentGroup(oauthUser *oauth.OAuthUser) string {
-	name, _ := oauthUser.Extra["org_name"].(string)
+func oauthDepartmentIdentity(oauthUser *oauth.OAuthUser) (orgID string, orgName string) {
+	if oauthUser == nil || oauthUser.Extra == nil {
+		return "", ""
+	}
+	orgID, _ = oauthUser.Extra["org_id"].(string)
+	orgName, _ = oauthUser.Extra["org_name"].(string)
+	return strings.TrimSpace(orgID), strings.TrimSpace(orgName)
+}
+
+func normalizeOAuthGroupName(name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return ""
@@ -55,7 +67,57 @@ func oauthDepartmentGroup(oauthUser *oauth.OAuthUser) string {
 	return name
 }
 
+func oauthDepartmentGroup(oauthUser *oauth.OAuthUser) string {
+	orgID, orgName := oauthDepartmentIdentity(oauthUser)
+	for _, candidate := range []string{orgName, orgID} {
+		if groupName := normalizeOAuthGroupName(candidate); groupName != "" {
+			return groupName
+		}
+	}
+	return ""
+}
+
+func oauthDefaultQuotaCredits() float64 {
+	raw := strings.TrimSpace(os.Getenv(oauthDefaultQuotaCreditsEnv))
+	if raw == "" {
+		return oauthDefaultInitialQuotaCredits
+	}
+	credits, err := strconv.ParseFloat(raw, 64)
+	if err != nil || credits < 0 {
+		common.SysError(common.LogText("invalid %s=%q, using %.0f credits", oauthDefaultQuotaCreditsEnv, raw, oauthDefaultInitialQuotaCredits))
+		return oauthDefaultInitialQuotaCredits
+	}
+	return credits
+}
+
+func oauthDepartmentQuotaCredits(orgID string, orgName string, groupName string) float64 {
+	fallback := oauthDefaultQuotaCredits()
+	raw := strings.TrimSpace(os.Getenv(oauthDepartmentQuotasEnv))
+	if raw == "" {
+		return fallback
+	}
+	var quotas map[string]float64
+	if err := json.Unmarshal([]byte(raw), &quotas); err != nil {
+		common.SysError(common.LogText("invalid %s JSON, using default quota: %v", oauthDepartmentQuotasEnv, err))
+		return fallback
+	}
+	for _, key := range []string{orgID, orgName, groupName} {
+		if strings.TrimSpace(key) == "" {
+			continue
+		}
+		if credits, ok := quotas[key]; ok && credits >= 0 {
+			return credits
+		}
+	}
+	return fallback
+}
+
+func oauthDepartmentInitialQuota(orgID string, orgName string, groupName string) int {
+	return common.QuotaRound(oauthDepartmentQuotaCredits(orgID, orgName, groupName) * common.QuotaPerUnit)
+}
+
 func applyOAuthDepartment(user *model.User, oauthUser *oauth.OAuthUser, newUser bool) error {
+	orgID, orgName := oauthDepartmentIdentity(oauthUser)
 	groupName := oauthDepartmentGroup(oauthUser)
 	if groupName == "" {
 		return nil
@@ -72,7 +134,7 @@ func applyOAuthDepartment(user *model.User, oauthUser *oauth.OAuthUser, newUser 
 		}
 	}
 	if newUser {
-		quota := oauthDepartmentInitialQuota
+		quota := oauthDepartmentInitialQuota(orgID, orgName, groupName)
 		user.InitialQuota = &quota
 	}
 	return nil

@@ -39,7 +39,12 @@ type oidcUser struct {
 	PreferredUsername string `json:"preferred_username"`
 	Picture           string `json:"picture"`
 	OrgID             string `json:"org_id"`
+	OrganizationID    string `json:"organization_id"`
+	DepartmentID      string `json:"department_id"`
 	OrgName           string `json:"org_name"`
+	OrganizationName  string `json:"organization_name"`
+	DepartmentName    string `json:"department_name"`
+	Department        string `json:"department"`
 }
 
 func (p *OIDCProvider) GetName() string {
@@ -151,14 +156,17 @@ func (p *OIDCProvider) GetUserInfo(ctx context.Context, token *OAuthToken) (*OAu
 
 	logger.LogDebug(ctx, "[OAuth-OIDC] GetUserInfo success: sub=%s, username=%s, name=%s, email=%s", oidcUser.OpenID, oidcUser.PreferredUsername, oidcUser.Name, oidcUser.Email)
 
+	orgID := firstNonEmptyOIDC(oidcUser.OrgID, oidcUser.OrganizationID, oidcUser.DepartmentID)
+	orgName := firstNonEmptyOIDC(oidcUser.OrgName, oidcUser.OrganizationName, oidcUser.DepartmentName, oidcUser.Department)
+
 	return &OAuthUser{
 		ProviderUserID: oidcUser.OpenID,
 		Username:       oidcUser.PreferredUsername,
 		DisplayName:    oidcUser.Name,
 		Email:          oidcUser.Email,
 		Extra: map[string]any{
-			"org_id":   oidcUser.OrgID,
-			"org_name": oidcUser.OrgName,
+			"org_id":   orgID,
+			"org_name": orgName,
 		},
 	}, nil
 }
@@ -183,4 +191,13 @@ func (p *OIDCProvider) GetProviderPrefix() string {
 // ProviderUserIDColumn returns the users-table column storing this provider's user ID.
 func (p *OIDCProvider) ProviderUserIDColumn() string {
 	return "oidc_id"
+}
+
+func firstNonEmptyOIDC(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
