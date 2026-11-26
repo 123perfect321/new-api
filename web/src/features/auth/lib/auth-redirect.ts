@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { ROLE } from '@/lib/roles'
 import type { AuthUser } from '@/stores/auth-store'
 
 const allowedRedirectProtocols = new Set(['http:', 'https:'])
@@ -77,4 +78,37 @@ export function sanitizeAuthRedirect(
   }
 
   return `${redirectURL.pathname}${redirectURL.search}${redirectURL.hash}`
+}
+
+const ADMIN_ONLY_ROUTE_PREFIXES = [
+  '/channels',
+  '/models',
+  '/redemption-codes',
+  '/subscriptions',
+  '/system-info',
+  '/system-settings',
+  '/task-plugins',
+  '/users',
+]
+
+const NON_LOGIN_TARGETS = new Set(['/401', '/403'])
+
+export function getSafePostLoginRedirect(
+  value: unknown,
+  origin: string,
+  role?: number,
+  fallback = '/dashboard'
+): string {
+  const target = sanitizeAuthRedirect(value, origin) ?? fallback
+  const pathname = target.split(/[?#]/, 1)[0]
+  if (NON_LOGIN_TARGETS.has(pathname)) return fallback
+  if (
+    (role ?? ROLE.GUEST) < ROLE.ADMIN &&
+    ADMIN_ONLY_ROUTE_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
+    )
+  ) {
+    return fallback
+  }
+  return target
 }

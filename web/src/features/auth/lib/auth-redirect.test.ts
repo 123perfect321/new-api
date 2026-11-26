@@ -20,7 +20,13 @@ import { describe, expect, test } from 'vitest'
 
 import type { AuthUser } from '@/stores/auth-store'
 
-import { getSavedLanguage, sanitizeAuthRedirect } from './auth-redirect'
+import { ROLE } from '@/lib/roles'
+
+import {
+  getSavedLanguage,
+  getSafePostLoginRedirect,
+  sanitizeAuthRedirect,
+} from './auth-redirect'
 
 const origin = 'https://dashboard.example.com'
 
@@ -57,6 +63,34 @@ describe('authentication redirect validation', () => {
   test('rejects invalid or non-HTTP application origins', () => {
     expect(sanitizeAuthRedirect('/dashboard', 'not-an-origin')).toBe(null)
     expect(sanitizeAuthRedirect('/dashboard', 'file:///tmp/app')).toBe(null)
+  })
+})
+
+describe('safe post-login redirects', () => {
+  test('keeps normal user redirects on user pages', () => {
+    expect(getSafePostLoginRedirect('/keys', origin, ROLE.USER)).toBe('/keys')
+  })
+
+  test('does not send a normal user back to an admin-only page', () => {
+    expect(getSafePostLoginRedirect('/users', origin, ROLE.USER)).toBe(
+      '/dashboard'
+    )
+    expect(
+      getSafePostLoginRedirect('/system-settings/auth', origin, ROLE.USER)
+    ).toBe('/dashboard')
+  })
+
+  test('allows admins to keep admin redirects', () => {
+    expect(getSafePostLoginRedirect('/users', origin, ROLE.ADMIN)).toBe('/users')
+  })
+
+  test('replaces error pages and invalid targets with the fallback', () => {
+    expect(getSafePostLoginRedirect('/403', origin, ROLE.USER)).toBe(
+      '/dashboard'
+    )
+    expect(
+      getSafePostLoginRedirect('https://evil.example', origin, ROLE.USER)
+    ).toBe('/dashboard')
   })
 })
 
